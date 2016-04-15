@@ -1,5 +1,6 @@
 #include<iostream>
 #include<cmath>
+#include<stdexcept>
 
 using namespace std;
 
@@ -10,10 +11,15 @@ class BigInt {
 		void copy(int size);
 		void setNum(int value);
 		void setNum(const BigInt& value);
+		void shiftLeft(int shift);
+		void shiftRight(int shift);
 	public:
-		BigInt(int size = 1) : mSize(size), mNum(new int[mSize]){ mNum[0] = 0; };
+		BigInt(int size = 1);
 		~BigInt();
-		BigInt operator+ (const BigInt& x);
+		BigInt operator+ (BigInt& x);
+		BigInt operator* (int value) const;
+		static BigInt fact (int value);
+		BigInt(const BigInt& value);
 		BigInt& operator= (int value);
 		BigInt& operator= (const BigInt& value);
 		int operator[] (int index) const;
@@ -22,12 +28,20 @@ class BigInt {
 		void set(int index, int value);
 };
 
+BigInt::BigInt(int size) {
+	mNum = new int[size];
+       	mSize = size;
+
+	for (int i = 0; i < size; ++i)
+		mNum[i] = 0; 
+}
+
 void BigInt::set(int index, int value) {
 	mNum[index] = value;
 }
 
 BigInt::~BigInt() {
-	delete mNum;
+	delete[] mNum;
 }
 
 void BigInt::print() const {
@@ -39,16 +53,17 @@ void BigInt::print() const {
 }
 
 int BigInt::operator[] (int index) const {
+	if (index < 0 || index >= mSize) throw -1;
 	return mNum[index];
 }
 
-BigInt BigInt::operator+(const BigInt& x) {
+BigInt BigInt::operator+(BigInt& x) {
 	int size = x.getSize();
-
-	if (mSize < size) {
-		copy(size);
-	} else {
+	if (size < mSize) {
+		x.shiftRight(mSize - size);
 		size = mSize;
+	} else {
+		this->shiftRight(size - mSize);
 	}
 
 	BigInt res = BigInt(size);
@@ -66,22 +81,89 @@ BigInt BigInt::operator+(const BigInt& x) {
 		}
 	}
 
+	return res;
+}
+
+void BigInt::shiftRight(int shift) {
+	if (shift == 0) return;
+
+	int* newInt = new int[mSize + shift];
+	for (int i = 0; i < shift; ++i) 
+		newInt[i] = 0;
+
+	for (int i = 0; i < mSize; ++i) 
+		newInt[i + shift] = mNum[i];
+
+	mSize += shift;
+	delete[] mNum;
+	mNum = newInt;
+}
+
+BigInt BigInt::operator* (int value) const {
+	BigInt op;
+	op = value;
+
+	int size = op.getSize();
+	if (size < mSize) size = mSize;
+
+	BigInt res = BigInt(size);
+	BigInt tmp = BigInt(size);
+
+	for (int i = op.getSize() - 1, shift = 0; i >= 0; --i) {
+		int carryOut = 0;
+		for (int j = mSize - 1; j >= 0; --j) {
+			int mult = op[i] * mNum[j] + carryOut;
+			tmp.set(j, mult % 10);
+			carryOut = mult / 10;
+
+			if (j == 0 && carryOut != 0) {
+				tmp.copy(size+1);
+				tmp.set(0, carryOut);
+			}
+		}
+
+		tmp.shiftLeft(shift++);
+		res = res + tmp;
+	}
+
 
 	return res;
 }
 
+void BigInt::shiftLeft(int shift) {
+	if (shift == 0) return;
+
+	int* newInt = new int[shift + mSize];
+
+	for (int i = 0; i < mSize; ++i)
+		newInt[i] = mNum[i];
+	for (int i = mSize; i < shift + mSize; ++i)
+		newInt[i] = 0;
+	mSize += shift;
+
+	delete[] mNum;
+	mNum = newInt;
+}
+
 void BigInt::copy(int size) {
 	int* bigInt = new int[size];
+
 	int start = size - mSize;
+
+	for (int i = 0; i < start; ++i) bigInt[i] = 0;
 
 	for (int i = 0; i < mSize; ++i) {
 		bigInt[i + start] = mNum[i];
 	}
 
-	delete mNum;
+	delete[] mNum;
 	mNum = bigInt;
 	mSize = size;
 
+}
+
+BigInt::BigInt(const BigInt& value) {
+	setNum(value);
 }
 
 BigInt& BigInt::operator=(int value) {
@@ -97,7 +179,7 @@ BigInt& BigInt::operator=(const BigInt& value) {
 void BigInt::setNum(const BigInt& value) {
 	int size = value.getSize();
 
-	delete mNum;
+	delete[] mNum;
 	mNum = new int[size];
 	mSize = size;
 
@@ -114,7 +196,7 @@ void BigInt::setNum(int value) {
 		++size;
 	}
 
-	delete mNum;
+	delete[] mNum; 
 	mNum = new int[size];
 	mSize = size;
 
@@ -127,16 +209,26 @@ void BigInt::setNum(int value) {
 	}
 }
 
+BigInt BigInt::fact (int value) {
+	BigInt res;
+	res = 1;
+
+	for (int i = 2; i <= value; ++i) {
+		res = res * i;
+	}
+
+	return res;
+}
+
 int main() {
 	BigInt a;
-	a = 999999999;
-	BigInt b;
-	b = 999999999;
-	BigInt c;
-
+	a = BigInt::fact(100);
 	a.print();
-	b.print();
-	c = a + b;
-	c.print();
+	
+	/*for (int i = 0; i < 81; ++i) {
+		a = BigInt::fact(i);
+		a.print();
+	}*/
 
+	return 0;
 }
